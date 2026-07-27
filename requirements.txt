@@ -1,0 +1,5 @@
+PyYAML
+numpy
+PyGObject
+opencv-python-headless
+onnxruntime

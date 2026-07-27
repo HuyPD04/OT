@@ -1,0 +1,4 @@
+model_path: src/resources/weights/yolo11s.onnx
+input_size: 640
+conf: 0.25
+class_ids: [0,2,3,5,7]

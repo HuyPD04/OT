@@ -1,0 +1,14 @@
+camera_id: cam-01
+url: ${RTSP_URL}
+codec: h265
+transport: "tcp"
+latency_ms: 1000
+stall_timeout_seconds: 8
+timeout_ms: 200
+reconnect_initital: 1.0
+reconnect_max: 30.0
+reconnect_stable_seconds: 30.0
+reconnect_stable_frames: 100
+minimum_capture_fps: 3.0
+degraded_window_seconds: 3.0
+startup_grace_seconds: 10.0
