@@ -5,7 +5,7 @@ import threading
 import time
 import random
 
-from ..store.latest_frame import LatestFrameStore
+from ..buffer.framebuffer import FrameBuffer
 from ...models.camera import Camera
 from ...models.health import HealthStatus, WorkerHealthState
 
@@ -15,9 +15,9 @@ class ThreadCapture:
     def __init__(
             self,
             camera: Camera,
-            output: LatestFrameStore,
+            output: FrameBuffer,
             timeout_ms: int = 200,
-            thread_name: str = "capture",
+            thread_name: str = "ThreadCapture",
             reconnect_initital: float = 1.0,
             reconnect_max: float = 30.0, 
             reconnect_stable_seconds: float = 30.0,

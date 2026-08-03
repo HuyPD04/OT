@@ -3,3 +3,5 @@ numpy
 PyGObject
 opencv-python-headless
 onnxruntime
+filterpy
+scipy

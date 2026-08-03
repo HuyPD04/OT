@@ -12,7 +12,12 @@ from gi.repository import Gst # type: ignore
 
 from .controllers.threads.thread_capture import ThreadCapture
 from .controllers.threads.thread_display import ThreadDisplay
-from .controllers.store.latest_frame import LatestFrameStore
+from .controllers.threads.thread_inference import ThreadInference
+from .controllers.threads.thread_tracking import ThreadTracking
+from .controllers.backend.onnx_runtime import OnnxBackend
+from .controllers.buffer.detectionbuffer import DetectionBuffer
+from .controllers.buffer.framebuffer import FrameBuffer
+from .controllers.buffer.trackerbuffer import TrackerBuffer
 from .controllers.main_controller import APIController
 from .camera.gst_source import GstSource
 
@@ -22,13 +27,13 @@ def build_application(config):
     Gst.init(sys.argv)
     cv2.setNumThreads(1)
 
-    frame_store = LatestFrameStore()
+    frame_buffer = FrameBuffer()
     camera = lambda: GstSource(config.camera)
     thread_output = []
 
     thread_capture = ThreadCapture(
         camera=camera,
-        output=frame_store,
+        output=frame_buffer,
         timeout_ms=config.camera.timeout_ms,
         reconnect_initital=config.camera.reconnect_initital,
         reconnect_max=config.camera.reconnect_max,
@@ -39,12 +44,41 @@ def build_application(config):
         startup_grace_seconds=config.camera.startup_grace_seconds
     )
 
-    thread_display = ThreadDisplay(frame_store=frame_store)
+    detection_buffer = DetectionBuffer()
+    tracker_buffer = TrackerBuffer()
+    backend = OnnxBackend(
+        model=config.detection.model_path,
+        input_size=config.detection.input_size,
+        confidence_threshold=config.detection.conf,
+        iou_threshold=getattr(config.detection, "iou_threshold", 0.45),
+        class_ids=getattr(config.detection, "class_ids", None),
+    )
+    thread_inference = ThreadInference(
+        frame_buffer=frame_buffer,
+        detection_buffer=detection_buffer,
+        backend=backend,
+    )
+    thread_tracking = ThreadTracking(
+        frame_buffer=frame_buffer,
+        detection_buffer=detection_buffer,
+        tracker_buffer=tracker_buffer,
+        iou_threshold=getattr(config.detection, "tracking_iou_threshold", 0.3),
+        max_detection_lag_frames=getattr(config.detection, "max_detection_lag_frames", 10),
+    )
+    thread_display = ThreadDisplay(
+        frame_buffer=frame_buffer,
+        detection_buffer=detection_buffer,
+        tracker_buffer=tracker_buffer,
+    )
     thread_output = [thread_display]
 
     return APIController(
         thread_capture=thread_capture,
-        latest_frame_store=frame_store,
+        thread_infer=thread_inference,
+        thread_tracking=thread_tracking,
+        detection_buffer=detection_buffer,
+        frame_buffer=frame_buffer,
+        tracker_buffer=tracker_buffer,
         thread_output=thread_output
     )
 

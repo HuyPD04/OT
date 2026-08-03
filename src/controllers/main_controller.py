@@ -6,23 +6,42 @@ class APIController:
             self,
             thread_capture,
             thread_output,
-            latest_frame_store
+            thread_infer,
+            thread_tracking,
+            detection_buffer,
+            frame_buffer,
+            tracker_buffer
     ) -> None:
         self._thread_capture = thread_capture
         self._thread_output = thread_output
-        self._latest_frame_store = latest_frame_store
+        self._frame_buffer = frame_buffer
+        self._thread_infer = thread_infer
+        self._thread_tracking = thread_tracking
+        self._detection_buffer = detection_buffer  
+        self._tracker_buffer = tracker_buffer
 
     def start(self) -> None:
         self._thread_capture.start()
+        self._thread_infer.start()
+        self._thread_tracking.start()
 
         for thread in self._thread_output:
             thread.start()
 
     def stop(self) -> None:
         self._thread_capture.stop()
-        self._thread_capture.join(timeout=10)
-        self._latest_frame_store.close()
+        self._thread_infer.stop()
+        self._thread_tracking.stop()
+
+        self._frame_buffer.close()
+        self._detection_buffer.close()
+        self._tracker_buffer.close()
+
         for thread in self._thread_output:
             thread.stop()
+
+        self._thread_capture.join(timeout=10)
+        self._thread_infer.join(timeout=10)
+        self._thread_tracking.join(timeout=10)
         for thread in self._thread_output:
             thread.join(timeout=10)

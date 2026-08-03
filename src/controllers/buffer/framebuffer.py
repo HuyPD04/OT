@@ -3,7 +3,7 @@ from __future__ import annotations
 import threading
 from ...models.framepacket import FramePacket
 
-class LatestFrameStore:
+class FrameBuffer:
     def __init__(self) -> None:
         self._condition = threading.Condition()
         self._frame: FramePacket | None = None

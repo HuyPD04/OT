@@ -6,8 +6,10 @@ import cv2
 import numpy as np
 import logging
 
-from ..store.latest_frame import LatestFrameStore
-from ...utils.boxes import CLASS_NAME, draw_label, color_for_class
+from ..buffer.framebuffer import FrameBuffer
+from ..buffer.detectionbuffer import DetectionBuffer
+from ..buffer.trackerbuffer import TrackerBuffer
+from ...utils.boxes import draw_detection, draw_track
 from ...models.health import WorkerHealthState, HealthStatus
 
 logger = logging.getLogger(__name__)
@@ -15,11 +17,15 @@ logger = logging.getLogger(__name__)
 class ThreadDisplay:
     def __init__(
             self,
-            frame_store: LatestFrameStore | None | None,
+            frame_buffer: FrameBuffer,
+            detection_buffer: DetectionBuffer | None = None,
+            tracker_buffer: TrackerBuffer | None = None,
             window_name: str = "Object Tracking",
-            thread_name: str = "display"
+            thread_name: str = "ThreadDisplay"
     ) -> None:
-        self._frame_store = frame_store
+        self._frame_buffer = frame_buffer
+        self._detection_buffer = detection_buffer
+        self._tracker_buffer = tracker_buffer
         self._window_name = window_name
         self._thread_name = thread_name
 
@@ -56,13 +62,14 @@ class ThreadDisplay:
             cv2.waitKey(1)
 
             while not self._stop_event.is_set():
-                version, packet = self._frame_store.wait_next(
+                version, packet = self._frame_buffer.wait_next(
                     pre_version=version,
                     timeout=poll_timeout
                 )
                 if packet is not None:
-                    last_frame = packet.image
+                    last_frame = packet.image.copy()
                     first_camera_frame_received = True
+                    self._draw_overlay(last_frame)
 
                 cv2.imshow(self._window_name, last_frame)
                 key = cv2.waitKey(1) & 0xFF
@@ -76,7 +83,7 @@ class ThreadDisplay:
                 ):
                     logger.warning("Thread display is waiting for the first camera frame")
                     waiting_warning_logged = True
-                if packet is None and self._frame_store.closed:
+                if packet is None and self._frame_buffer.closed:
                     break
 
         except Exception:
@@ -102,6 +109,20 @@ class ThreadDisplay:
             cv2.LINE_AA
         )
         return image
+
+    def _draw_overlay(self, image: np.ndarray) -> None:
+        if self._tracker_buffer is not None:
+            _, track_packet = self._tracker_buffer.snapshot()
+            if track_packet is not None:
+                for track in track_packet.tracks:
+                    draw_track(image, track)
+                return
+
+        if self._detection_buffer is not None:
+            _, detection_packet = self._detection_buffer.snapshot()
+            if detection_packet is not None:
+                for detection in detection_packet.detections:
+                    draw_detection(image, detection)
 
     def stop(self) -> None:
         self._health.set(HealthStatus.STOPPING, "preview worker stopping")
