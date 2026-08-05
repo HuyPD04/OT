@@ -1,17 +1,30 @@
-import numpy as np
-import cv2
-from ..models.detection import Detection
-from ..models.track import Track
 from collections.abc import Sequence
+
+import cv2
+import numpy as np
+
+from ..models.detection import Detection
+from ..models.plate import PlateDetection
+from ..models.track import Track
 
 
 CLASS_NAME = {
-    0: "persion",
+    0: "person",
     2: "car",
     3: "motorcycle",
     5: "bus",
-    7: "truck"
+    7: "truck",
 }
+
+CLASS_COLORS = (
+    (56, 56, 255), (151, 157, 255), (31, 112, 255),
+    (29, 178, 255), (49, 210, 207), (10, 249, 72),
+    (23, 204, 146), (134, 219, 61), (52, 147, 26),
+    (187, 212, 0), (168, 153, 44), (255, 194, 0),
+    (147, 69, 52), (255, 115, 100), (236, 24, 0),
+    (255, 56, 132), (133, 0, 82), (255, 56, 203),
+    (200, 149, 255), (199, 55, 255),
+)
 
 def draw_label(
         image: np.ndarray, 
@@ -42,16 +55,7 @@ def draw_label(
     )
 
 def color_for_class(class_id: int) -> tuple[int, int, int]:
-    palette = (
-        (56, 56, 255), (151, 157, 255), (31, 112, 255),
-        (29, 178, 255), (49, 210, 207), (10, 249, 72),
-        (23, 204, 146), (134, 219, 61), (52, 147, 26),
-        (187, 212, 0), (168, 153, 44), (255, 194, 0),
-        (147, 69, 52), (255, 115, 100), (236, 24, 0),
-        (255, 56, 132), (133, 0, 82), (255, 56, 203),
-        (200, 149, 255), (199, 55, 255),
-    )
-    return palette[class_id % len(palette)]
+    return CLASS_COLORS[class_id % len(CLASS_COLORS)]
 
 def preprocess(frame_bgr: np.ndarray, input_size: int):
         image, scale, pad_x, pad_y = _letterbox(frame_bgr, input_size)
@@ -212,5 +216,17 @@ def draw_track(image: np.ndarray, track: Track) -> None:
     )
     label = f"ID {track.track_id}"
     if track.class_id is not None:
-        label = f"{CLASS_NAME.get(track.class_id, track.class_id)} {label}"
+        label = f"{label} {CLASS_NAME.get(track.class_id, track.class_id)} "
     draw_label(image, label, track.x1, track.y1, color)
+
+
+def draw_plate(image: np.ndarray, plate: PlateDetection) -> None:
+    color = (0, 255, 255)
+    cv2.rectangle(
+        image,
+        (plate.x1, plate.y1),
+        (plate.x2, plate.y2),
+        color,
+        2,
+    )
+    draw_label(image, f"plate ID {plate.track_id} {plate.conf:.2f}", plate.x1, plate.y1, color)

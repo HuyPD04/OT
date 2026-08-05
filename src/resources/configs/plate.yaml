@@ -1,0 +1,9 @@
+model_path: src/resources/weights/plate_int8.onnx
+input_size: 640
+conf: 0.25
+iou_threshold: 0.45
+class_ids: null
+vehicle_class_ids: [2,3,5,7]
+roi_padding: 0.05
+min_roi_size: 32
+min_inference_interval_seconds: 0.5

@@ -26,3 +26,4 @@ class Config:
     def __init__(self):
         self.camera = ConfigLoader.load("camera.yaml")
         self.detection = ConfigLoader.load("detection.yaml")
+        self.plate = ConfigLoader.load("plate.yaml")

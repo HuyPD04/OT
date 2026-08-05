@@ -8,9 +8,8 @@ import numpy as np
 
 from ...models.health import HealthStatus, WorkerHealthState
 from ...models.track import Track, TrackPacket
-from ...utils.sort import Sort
+from ...utils.tracker import TrackedObject, Tracker
 from ..buffer.detectionbuffer import DetectionBuffer
-from ..buffer.framebuffer import FrameBuffer
 from ..buffer.trackerbuffer import TrackerBuffer
 
 logger = logging.getLogger(__name__)
@@ -19,24 +18,24 @@ logger = logging.getLogger(__name__)
 class ThreadTracking:
     def __init__(
             self,
-            frame_buffer: FrameBuffer,
             detection_buffer: DetectionBuffer,
             tracker_buffer: TrackerBuffer,
             max_age: int = 10,
             min_hits: int = 1,
             iou_threshold: float = 0.3,
-            max_detection_lag_frames: int = 10,
+            center_threshold: float = 1.5,
+            center_weight: float = 0.35,
             thread_name: str = "ThreadTracking",
     ) -> None:
-        self._frame_buffer = frame_buffer
         self._detection_buffer = detection_buffer
         self._tracker_buffer = tracker_buffer
-        self._tracker = Sort(
+        self._tracker = Tracker(
             max_age=max_age,
             min_hits=min_hits,
             iou_threshold=iou_threshold,
+            center_threshold=center_threshold,
+            center_weight=center_weight,
         )
-        self._max_detection_lag_frames = max_detection_lag_frames
         self._thread_name = thread_name
 
         self._health = WorkerHealthState(name=thread_name)
@@ -56,62 +55,46 @@ class ThreadTracking:
         self._thread.start()
 
     def _run(self) -> None:
-        frame_version = 0
-        last_detection_version = 0
+        detection_version = 0
         self._health.set(HealthStatus.RUNNING, "thread tracking running")
 
         while not self._stop_event.is_set():
-            frame_version, frame = self._frame_buffer.wait_next(
-                pre_version=frame_version,
+            detection_version, detection_packet = self._detection_buffer.wait_next(
+                pre_version=detection_version,
                 timeout=0.5,
             )
-            if frame is None:
-                if self._frame_buffer.closed:
+            if detection_packet is None:
+                if self._detection_buffer.closed:
                     break
                 continue
 
-            start = time.perf_counter()
-            detection_version, detection_packet = self._detection_buffer.snapshot()
-            detections = np.empty((0, 5), dtype=float)
-            detection_frame_id: str | None = None
-
-            if (
-                    detection_packet is not None
-                    and detection_version > last_detection_version
-                    and self._is_detection_usable(frame.frame_id, detection_packet.frame.frame_id)
-            ):
-                detection_frame_id = detection_packet.frame.frame_id
-                last_detection_version = detection_version
-                if detection_packet.detections:
-                    detections = np.array(
-                        [
-                            [det.x1, det.y1, det.x2, det.y2, det.conf]
-                            for det in detection_packet.detections
-                        ],
-                        dtype=float,
-                    )
-
             try:
-                self._tracker.update(detections)
-                sort_tracks = self._tracker.get_tracks()
-                tracks = tuple(
-                    Track(
-                        x1=max(0, int(round(track[0]))),
-                        y1=max(0, int(round(track[1]))),
-                        x2=min(frame.width - 1, int(round(track[2]))),
-                        y2=min(frame.height - 1, int(round(track[3]))),
-                        track_id=int(track[4]),
-                    )
-                    for track in sort_tracks
-                    if track[2] > track[0] and track[3] > track[1]
+                started_at = time.perf_counter()
+                detections = np.asarray(
+                    [
+                        [det.x1, det.y1, det.x2, det.y2, det.conf, det.class_id]
+                        for det in detection_packet.detections
+                    ],
+                    dtype=float,
                 )
-                tracking_ms = time.perf_counter() - start
+                tracked_objects = self._tracker.update(detections)
+                tracks = tuple(
+                    track
+                    for tracked_object in tracked_objects
+                    if (
+                        track := self._build_track(
+                            tracked_object,
+                            detection_packet.frame.width,
+                            detection_packet.frame.height,
+                        )
+                    ) is not None
+                )
                 self._tracker_buffer.publish(
                     TrackPacket(
-                        frame=frame,
+                        frame=detection_packet.frame,
                         tracks=tracks,
-                        detection_frame_id=detection_frame_id,
-                        tracking_ms=tracking_ms,
+                        detection_frame_id=detection_packet.frame.frame_id,
+                        tracking_ms=time.perf_counter() - started_at,
                     )
                 )
             except Exception as error:
@@ -120,15 +103,28 @@ class ThreadTracking:
 
         self._health.set(HealthStatus.STOPPED, "thread tracking stopped")
 
-    def _is_detection_usable(self, frame_id: str, detection_frame_id: str) -> bool:
-        try:
-            current = int(frame_id)
-            detected = int(detection_frame_id)
-        except ValueError:
-            return detection_frame_id == frame_id
+    def _build_track(
+            self,
+            tracked_object: TrackedObject,
+            frame_width: int,
+            frame_height: int,
+    ) -> Track | None:
+        x1 = min(frame_width - 1, max(0, int(round(tracked_object.x1))))
+        y1 = min(frame_height - 1, max(0, int(round(tracked_object.y1))))
+        x2 = min(frame_width - 1, max(0, int(round(tracked_object.x2))))
+        y2 = min(frame_height - 1, max(0, int(round(tracked_object.y2))))
+        if x2 <= x1 or y2 <= y1:
+            return None
 
-        lag = current - detected
-        return 0 <= lag <= self._max_detection_lag_frames
+        return Track(
+            x1=x1,
+            y1=y1,
+            x2=x2,
+            y2=y2,
+            track_id=tracked_object.track_id,
+            conf=tracked_object.score,
+            class_id=tracked_object.class_id,
+        )
 
     def stop(self) -> None:
         self._stop_event.set()

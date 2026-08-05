@@ -12,3 +12,6 @@ wheels/
 logs/
 *.onnx
 *.pt
+
+splits/
+runs/

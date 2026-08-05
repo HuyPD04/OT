@@ -8,8 +8,9 @@ import logging
 
 from ..buffer.framebuffer import FrameBuffer
 from ..buffer.detectionbuffer import DetectionBuffer
+from ..buffer.platebuffer import PlateBuffer
 from ..buffer.trackerbuffer import TrackerBuffer
-from ...utils.boxes import draw_detection, draw_track
+from ...utils.boxes import draw_detection, draw_plate, draw_track
 from ...models.health import WorkerHealthState, HealthStatus
 
 logger = logging.getLogger(__name__)
@@ -20,12 +21,14 @@ class ThreadDisplay:
             frame_buffer: FrameBuffer,
             detection_buffer: DetectionBuffer | None = None,
             tracker_buffer: TrackerBuffer | None = None,
+            plate_buffer: PlateBuffer | None = None,
             window_name: str = "Object Tracking",
             thread_name: str = "ThreadDisplay"
     ) -> None:
         self._frame_buffer = frame_buffer
         self._detection_buffer = detection_buffer
         self._tracker_buffer = tracker_buffer
+        self._plate_buffer = plate_buffer
         self._window_name = window_name
         self._thread_name = thread_name
 
@@ -116,6 +119,14 @@ class ThreadDisplay:
             if track_packet is not None:
                 for track in track_packet.tracks:
                     draw_track(image, track)
+                if self._plate_buffer is not None:
+                    _, plate_packet = self._plate_buffer.snapshot()
+                    if plate_packet is not None and self._is_plate_packet_usable(
+                            track_packet.frame.frame_id,
+                            plate_packet.frame.frame_id,
+                    ):
+                        for plate in plate_packet.plates:
+                            draw_plate(image, plate)
                 return
 
         if self._detection_buffer is not None:
@@ -123,6 +134,17 @@ class ThreadDisplay:
             if detection_packet is not None:
                 for detection in detection_packet.detections:
                     draw_detection(image, detection)
+
+    @staticmethod
+    def _is_plate_packet_usable(frame_id: str, plate_frame_id: str, max_lag_frames: int = 10) -> bool:
+        try:
+            current = int(frame_id)
+            detected = int(plate_frame_id)
+        except ValueError:
+            return plate_frame_id == frame_id
+
+        lag = current - detected
+        return 0 <= lag <= max_lag_frames
 
     def stop(self) -> None:
         self._health.set(HealthStatus.STOPPING, "preview worker stopping")

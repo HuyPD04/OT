@@ -1,4 +1,4 @@
-model_path: src/resources/weights/yolo11s.onnx
+model_path: src/resources/weights/yolo11s_int8.onnx
 input_size: 640
 conf: 0.25
 class_ids: [0,2,3,5,7]
