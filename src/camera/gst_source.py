@@ -244,7 +244,7 @@ class GstSource(Camera):
         image, pts_ns = self._sample_to_numpy(sample)
         packet = FramePacket(
             camera_id=self._cfg.camera_id,
-            frame_id=self._frame_id,
+            frame_id=str(self._frame_id),
             received_ns=now_ns,
             pts_ns=pts_ns,
             width=image.shape[1],

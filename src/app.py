@@ -26,7 +26,7 @@ from .camera.gst_source import GstSource
 logger = logging.getLogger(__name__)
 
 
-def build_application(config):
+def build_application(config, *, enable_display: bool = True):
     Gst.init(sys.argv)
     cv2.setNumThreads(1)
 
@@ -89,13 +89,15 @@ def build_application(config):
             0.5,
         ),
     )
-    thread_display = ThreadDisplay(
-        frame_buffer=frame_buffer,
-        detection_buffer=detection_buffer,
-        tracker_buffer=tracker_buffer,
-        plate_buffer=plate_buffer,
-    )
-    thread_output = [thread_display]
+    if enable_display:
+        thread_output.append(
+            ThreadDisplay(
+                frame_buffer=frame_buffer,
+                detection_buffer=detection_buffer,
+                tracker_buffer=tracker_buffer,
+                plate_buffer=plate_buffer,
+            )
+        )
 
     return APIController(
         thread_capture=thread_capture,

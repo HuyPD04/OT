@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0b1020">
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/static/dashboard.css">
+    <title>Object Tracking</title>
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">OBJECT TRACKING</p>
+        <h1>Camera dashboard</h1>
+      </div>
+      <div class="topbar-actions">
+        <span id="connection" class="connection pending">Đang kết nối</span>
+        <div class="segmented" aria-label="Chế độ preview">
+          <button type="button" data-preview-mode="annotated" class="active">Có overlay</button>
+          <button type="button" data-preview-mode="raw">Camera gốc</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="dashboard">
+      <section class="panel preview-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">LIVE VIEW</p>
+            <h2>Camera preview</h2>
+          </div>
+          <span id="preview-label" class="muted">Overlay mới nhất</span>
+        </div>
+        <div class="preview-frame">
+          <img id="preview" alt="Luồng camera đang chờ frame đầu tiên">
+          <div id="preview-empty" class="preview-empty">Đang chờ camera...</div>
+        </div>
+      </section>
+
+      <section class="summary-grid" aria-label="Tóm tắt pipeline">
+        <article class="metric-card">
+          <span>Readiness</span>
+          <strong id="readiness">—</strong>
+          <small id="readiness-detail">Đang chờ trạng thái worker</small>
+        </article>
+        <article class="metric-card">
+          <span>Detection version</span>
+          <strong id="detection-version">—</strong>
+          <small id="detection-frame">Chưa có frame</small>
+        </article>
+        <article class="metric-card">
+          <span>Track version</span>
+          <strong id="track-version">—</strong>
+          <small id="track-frame">Chưa có frame</small>
+        </article>
+        <article class="metric-card">
+          <span>Plate version</span>
+          <strong id="plate-version">—</strong>
+          <small id="plate-frame">Chưa có frame</small>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">PIPELINE</p>
+            <h2>Worker health</h2>
+          </div>
+        </div>
+        <div id="workers" class="workers"></div>
+      </section>
+
+      <section class="data-grid">
+        <article class="panel table-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">LATEST FRAME</p>
+              <h2>Tracks</h2>
+            </div>
+            <span id="tracks-meta" class="muted">Chưa có dữ liệu</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>ID</th><th>Class</th><th>Confidence</th><th>Box (x1, y1, x2, y2)</th></tr>
+              </thead>
+              <tbody id="tracks-body"><tr><td colspan="4" class="empty-cell">Đang chờ track đầu tiên</td></tr></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="panel table-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">LATEST FRAME</p>
+              <h2>Plates</h2>
+            </div>
+            <span id="plates-meta" class="muted">Chưa có dữ liệu</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Track ID</th><th>Class</th><th>Confidence</th><th>Box (x1, y1, x2, y2)</th></tr>
+              </thead>
+              <tbody id="plates-body"><tr><td colspan="4" class="empty-cell">Đang chờ plate đầu tiên</td></tr></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <script src="/static/dashboard.js" defer></script>
+  </body>
+</html>

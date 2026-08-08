@@ -1,15 +1,22 @@
-from .app import run_application, build_application
-from .config.loader import Config
-from .utils.logger import setup_logging
+import os
+
 import logging
+
+import uvicorn
+
+from .api.app import create_app
+from .utils.logger import setup_logging
 
 logger = logging.getLogger(__name__)
 
-def main():
+def main() -> None:
     setup_logging()
-    config = Config()
-    controller = build_application(config=config)
-    run_application(controller=controller)
+    uvicorn.run(
+        create_app(),
+        host=os.getenv("WEB_HOST", "0.0.0.0"),
+        port=int(os.getenv("WEB_PORT", "8080")),
+        log_config=None,
+    )
     
 if __name__ == "__main__":
     main()

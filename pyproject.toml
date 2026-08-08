@@ -3,5 +3,15 @@ name = "objecttracking"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12"
-dependencies = []
+requires-python = ">=3.11"
+dependencies = [
+    "PyYAML",
+    "fastapi",
+    "uvicorn[standard]",
+    "numpy",
+    "PyGObject",
+    "opencv-python-headless",
+    "onnxruntime",
+    "filterpy",
+    "scipy",
+]

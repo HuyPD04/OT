@@ -1,4 +1,6 @@
 PyYAML
+fastapi
+uvicorn[standard]
 numpy
 PyGObject
 opencv-python-headless

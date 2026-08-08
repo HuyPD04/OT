@@ -40,7 +40,7 @@ def main():
                 ) / 1_000_000
 
                 logger.info(
-                    "frame=%d pts=%.3fs latency=%.2fms shape=%s",
+                    "frame=%s pts=%.3fs latency=%.2fms shape=%s",
                     packet.frame_id,
                     packet.pts_ns / Gst.SECOND,
                     latency_ms,
