@@ -9,7 +9,6 @@ dependencies = [
     "fastapi",
     "uvicorn[standard]",
     "numpy",
-    "PyGObject",
     "opencv-python-headless",
     "onnxruntime",
     "filterpy",
